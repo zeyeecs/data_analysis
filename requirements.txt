@@ -1,0 +1,12 @@
+python-dotenv>=1.0.0
+requests>=2.31.0
+psycopg2-binary>=2.9.9
+openpyxl>=3.1.2
+boto3>=1.34.0
+pytest>=8.0.0
+
+# 交互式分析
+jupyterlab>=4.0.0
+pandas>=2.0.0
+matplotlib>=3.8.0
+streamlit>=1.32.0

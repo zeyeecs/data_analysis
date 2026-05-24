@@ -1,0 +1,30 @@
+name: Daily import
+on:
+  schedule:
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: |
+          python scripts/import_to_tables.py \
+            --category F --category R --category V
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_API_BASE: ${{ secrets.FEISHU_API_BASE }}
+          FEISHU_FOLDER_F: ${{ secrets.FEISHU_FOLDER_F }}
+          FEISHU_FOLDER_R: ${{ secrets.FEISHU_FOLDER_R }}
+          FEISHU_FOLDER_V: ${{ secrets.FEISHU_FOLDER_V }}
+          FEISHU_FOLDER_F_SOURCE: ${{ secrets.FEISHU_FOLDER_F_SOURCE }}
+          FEISHU_FOLDER_R_SOURCE: ${{ secrets.FEISHU_FOLDER_R_SOURCE }}
+          FEISHU_FOLDER_V_SOURCE: ${{ secrets.FEISHU_FOLDER_V_SOURCE }}

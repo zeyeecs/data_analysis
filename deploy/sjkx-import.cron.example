@@ -1,0 +1,4 @@
+# 每日从飞书导入新快照（crontab -e）
+# 日志：/opt/sjkx/logs/import.log
+#
+# 0 3 * * * cd /opt/sjkx && .venv/bin/python3 scripts/import_to_tables.py --category F --category R --category V >> logs/import.log 2>&1

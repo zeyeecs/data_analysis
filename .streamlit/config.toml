@@ -1,0 +1,22 @@
+[browser]
+gatherUsageStats = false
+serverAddress = "localhost"
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[server]
+headless = true
+port = 8501
+address = "localhost"
+enableCORS = false
+enableXsrfProtection = true
+
+[runner]
+fastReruns = true
+
+[theme]
+base = "light"
+primaryColor = "#1f4e79"
+font = "sans serif"

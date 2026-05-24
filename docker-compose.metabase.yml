@@ -1,0 +1,21 @@
+# 本地试用 Metabase（分析前端，与 sjkx 导入进程分离）
+# 启动: docker compose -f docker-compose.metabase.yml up -d
+# 访问: http://localhost:3000
+#
+# 首次向导中连接 Neon：使用 database.env 中的 DATABASE_URL（建议只读账号）
+# 元数据默认存容器内 H2；重启容器会丢失仪表盘配置，生产请见 docs/metabase-setup.md
+
+services:
+  metabase:
+    image: metabase/metabase:v0.55.4
+    container_name: sjkx-metabase
+    ports:
+      - "3000:3000"
+    volumes:
+      - metabase-data:/metabase-data
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+    restart: unless-stopped
+
+volumes:
+  metabase-data:

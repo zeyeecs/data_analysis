@@ -1,0 +1,26 @@
+# 复制到 /etc/systemd/system/sjkx-dashboard.service 后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sjkx-dashboard
+#
+# 修改 User、WorkingDirectory 为实际路径
+
+[Unit]
+Description=sjkx Streamlit dashboard
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/sjkx
+Environment=PATH=/opt/sjkx/.venv/bin:/usr/bin:/bin
+ExecStart=/opt/sjkx/.venv/bin/streamlit run streamlit_app.py --server.port=8501 --server.address=127.0.0.1 --server.headless=true
+Restart=on-failure
+RestartSec=5
+
+# 避免 shell 里错误的 DATABASE_URL 覆盖 database.env
+UnsetEnvironment=DATABASE_URL
+
+[Install]
+WantedBy=multi-user.target
