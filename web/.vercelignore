@@ -1,0 +1,5 @@
+node_modules
+.next
+.npm-cache
+.npx-vercel-cache
+.env.local

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 import threading
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
@@ -15,15 +16,20 @@ from zipfile import BadZipFile
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from psycopg2.extras import execute_batch
+from psycopg2.extras import Json, execute_batch
 
 from src.config import env_bool, env_int, feishu_folders, load_config
 from src.db import db_session, drop_legacy_tables, init_schema
 from src.feishu_client import FeishuClient
-from src.image_mirror import mirror_records_batch
-from src.r2_storage import R2Storage, r2_settings_from_env
 from src.snapshot_date import parse_snapshot_date
-from src.xlsx_import import FR_COLUMNS, V_COLUMNS, clear_image_fields, iter_sheet_rows
+from src.xlsx_import import (
+    FR_COLUMNS,
+    V_COLUMNS,
+    build_old_data,
+    clear_image_fields,
+    iter_sheet_rows,
+    prepare_import_record,
+)
 
 FOLDER_TO_TABLE = {
     "F": ("F", "F"),
@@ -32,6 +38,8 @@ FOLDER_TO_TABLE = {
 }
 
 _print_lock = threading.Lock()
+_imported_snapshots_lock = threading.Lock()
+_imported_snapshots: dict[str, set[date | None]] = defaultdict(set)
 
 
 def _log(msg: str) -> None:
@@ -126,7 +134,7 @@ def import_one_file(
     batch_size: int,
     mirror_images: bool,
     empty_images: bool,
-    r2_storage: R2Storage | None,
+    r2_storage: Any,
 ) -> tuple[int, int]:
     """导入单个 xlsx；返回 (是否成功 0/1, 写入行数)。"""
     name = item["name"]
@@ -143,8 +151,13 @@ def import_one_file(
 
     columns = FR_COLUMNS if table_kind in {"F", "R"} else V_COLUMNS
     try:
-        records = list(
-            iter_sheet_rows(content, table_kind=table_kind, snapshot_date=snapshot)
+        raw_records = list(
+            iter_sheet_rows(
+                content,
+                table_kind=table_kind,
+                snapshot_date=snapshot,
+                skip_format=True,
+            )
         )
     except BadZipFile:
         _log("    跳过（不是有效的 xlsx 文件，可能下载不完整）")
@@ -153,6 +166,13 @@ def import_one_file(
         _log(f"    跳过（解析失败: {exc}）")
         return 0, 0
 
+    records: list[dict] = []
+    for raw in raw_records:
+        old_data = build_old_data(raw, table_kind)
+        prepare_import_record(raw, table_kind)
+        raw["old_data"] = Json(old_data)
+        records.append(raw)
+
     _log(f"    解析 {len(records)} 行 [{name}]")
 
     if empty_images and not mirror_images:
@@ -160,6 +180,8 @@ def import_one_file(
             clear_image_fields(record, table_kind)
 
     if mirror_images and r2_storage is not None:
+        from src.image_mirror import mirror_records_batch
+
         _log(f"    镜像图片到 R2 [{name}]...")
         file_stats = mirror_records_batch(
             records,
@@ -189,7 +211,68 @@ def import_one_file(
                 file_rows += insert_batch(cur, table, columns, batch)
 
     _log(f"    写入 {file_rows} 行 (snapshot_date={snapshot}) [{name}]")
+    if file_rows > 0:
+        with _imported_snapshots_lock:
+            _imported_snapshots[table].add(snapshot)
     return 1, file_rows
+
+
+def _reset_imported_snapshots() -> None:
+    with _imported_snapshots_lock:
+        _imported_snapshots.clear()
+
+
+def imported_snapshots_snapshot() -> dict[str, set[date | None]]:
+    with _imported_snapshots_lock:
+        return {table: set(dates) for table, dates in _imported_snapshots.items()}
+
+
+_migration_done = False
+_migration_lock = threading.Lock()
+
+
+def _ensure_format_migration() -> None:
+    global _migration_done
+    with _migration_lock:
+        if _migration_done:
+            return
+        from src.product_format_job import run_migration
+
+        run_migration()
+        _migration_done = True
+
+
+def _format_imported_table(table: str, *, skip_format: bool) -> None:
+    if skip_format:
+        return
+
+    imported = imported_snapshots_snapshot()
+    snapshots = imported.get(table)
+    if not snapshots:
+        return
+
+    from src.model_semantics import use_llm_semantics
+    from src.product_format_job import format_imported_snapshots
+
+    mode = "LLM" if use_llm_semantics() else "规则引擎"
+    dates_label = ", ".join(
+        sorted(
+            ("NULL" if d is None else d.isoformat() for d in snapshots),
+            key=lambda s: (s == "NULL", s),
+        )
+    )
+    print(
+        f"\n==> {table} 从 old_data 回填型号字段（{mode}，{dates_label}）",
+        flush=True,
+    )
+    _ensure_format_migration()
+    scanned, changed = format_imported_snapshots({table: snapshots}, dry_run=False)
+    print(
+        f"  {table} 型号回填完成: 扫描 {scanned:,} 行, 更新 {changed:,} 行",
+        flush=True,
+    )
+    with _imported_snapshots_lock:
+        _imported_snapshots.pop(table, None)
 
 
 def import_folder(
@@ -198,9 +281,9 @@ def import_folder(
     table: str,
     table_kind: str,
     batch_size: int = 500,
-    mirror_images: bool = False,
-    empty_images: bool = True,
-    r2_storage: R2Storage | None = None,
+    mirror_images: bool = True,
+    empty_images: bool = False,
+    r2_storage: Any = None,
     workers: int = 1,
     skip_existing: bool = True,
 ) -> tuple[int, int, int]:
@@ -290,12 +373,22 @@ def main() -> int:
     parser.add_argument(
         "--mirror-images",
         action="store_true",
-        help="将表格中的图片 URL 下载并上传到 R2，库中写入 R2 公开地址（也可用 R2_MIRROR_IMAGES=true）",
+        help="将图片下载并上传到 R2，库中写入 R2 公开地址（默认行为；也可用 R2_MIRROR_IMAGES=true）",
+    )
+    parser.add_argument(
+        "--no-mirror-images",
+        action="store_true",
+        help="不镜像图片到 R2（等同清空图片列；也可用 R2_MIRROR_IMAGES=false）",
     )
     parser.add_argument(
         "--keep-image-urls",
         action="store_true",
-        help="保留 xlsx 中的图片链接入库（默认清空图片列，仅导其它数据）",
+        help="直接写入 xlsx 中的飞书原链（不推荐；仅调试或临时绕过 R2）",
+    )
+    parser.add_argument(
+        "--empty-images",
+        action="store_true",
+        help="清空图片列不入库（仅导品牌/价格等；也可用 IMPORT_EMPTY_IMAGES=true）",
     )
     parser.add_argument(
         "--workers",
@@ -308,22 +401,40 @@ def main() -> int:
         action="store_true",
         help="导入飞书目录中的全部 xlsx，并对已有 snapshot_date 按日覆盖（默认仅导入库中尚无的日期）",
     )
+    parser.add_argument(
+        "--skip-format",
+        action="store_true",
+        help="导入后不从 old_data 回填型号字段（默认导入完成后自动回填）",
+    )
     args = parser.parse_args()
 
     load_config()
     workers = args.workers if args.workers is not None else env_int("IMPORT_WORKERS", 4)
     workers = max(1, workers)
 
-    mirror_images = args.mirror_images or env_bool("R2_MIRROR_IMAGES", False)
-    empty_images = not args.keep_image_urls and env_bool("IMPORT_EMPTY_IMAGES", True)
-    if mirror_images:
+    if args.keep_image_urls:
+        mirror_images = False
         empty_images = False
-    r2_storage: R2Storage | None = None
+    elif args.empty_images or args.no_mirror_images:
+        mirror_images = False
+        empty_images = True
+    elif env_bool("IMPORT_EMPTY_IMAGES", False):
+        mirror_images = False
+        empty_images = True
+    else:
+        mirror_images = args.mirror_images or env_bool("R2_MIRROR_IMAGES", True)
+        empty_images = False
+
+    r2_storage: Any = None
     if mirror_images:
+        from src.r2_storage import R2Storage, r2_settings_from_env
+
         r2_storage = R2Storage(r2_settings_from_env())
-        print("已启用图片镜像：飞书表格 URL -> R2", flush=True)
+        print("已启用图片镜像：下载飞书图片 -> R2 公开地址", flush=True)
     elif empty_images:
         print("图片字段将留空（品牌/价格等照常导入）", flush=True)
+    else:
+        print("图片将写入 xlsx 中的飞书原链（未镜像 R2）", flush=True)
 
     skip_existing = not args.reimport_all
     if skip_existing:
@@ -342,6 +453,8 @@ def main() -> int:
     if args.reset:
         init_schema()
         print("已重建表 F / R / V。", flush=True)
+    else:
+        _ensure_format_migration()
 
     should_import = args.reset or args.category is not None or not args.drop_legacy
     if not should_import:
@@ -349,6 +462,7 @@ def main() -> int:
 
     selected = args.category or ["F", "R", "V"]
     folders = feishu_folders()
+    _reset_imported_snapshots()
 
     for folder_key in selected:
         table, table_kind = FOLDER_TO_TABLE[folder_key]
@@ -372,6 +486,7 @@ def main() -> int:
             f"  完成: 导入 {files} 个文件, {rows} 行, 跳过 {skipped} 个",
             flush=True,
         )
+        _format_imported_table(table, skip_format=args.skip_format)
 
     return 0
 

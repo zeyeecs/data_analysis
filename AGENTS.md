@@ -18,7 +18,7 @@
 
 ### Issue tracker
 
-任务与 PRD 以 Markdown 存放在 `.scratch/`。详见 `docs/agents/issue-tracker.md`。
+任务与 PRD 通过 Linear MCP 跟踪，组织为 `cryogrid`、项目为 `二奢数据分析`。详见 `docs/agents/issue-tracker.md`。
 
 ### Triage labels
 

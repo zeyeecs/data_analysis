@@ -9,7 +9,13 @@ node_modules/
 web/.next/
 web/.env.local
 web/.npm-cache/
+.npx-vercel-cache/
+web/.npx-vercel-cache/
+downloads/
+logs/
+web/tsconfig.tsbuildinfo
 dist/
 *.log
 data/
 .ipynb_checkpoints/
+.vercel

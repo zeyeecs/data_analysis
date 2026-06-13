@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from typing import Any, Iterator
 
@@ -7,33 +8,64 @@ import requests
 
 from src.config import env
 
+_RETRYABLE = (
+    requests.exceptions.Timeout,
+    requests.exceptions.ConnectionError,
+)
+_MAX_RETRIES = 5
+
 
 class FeishuClient:
+    _token_lock = threading.Lock()
+    _shared_token: str | None = None
+    _shared_token_expire_at = 0.0
+
     def __init__(self) -> None:
         self.base = env("FEISHU_API_BASE").rstrip("/")
-        self._token: str | None = None
-        self._token_expire_at = 0.0
+
+    @classmethod
+    def _request(cls, method: str, url: str, **kwargs: Any) -> requests.Response:
+        last_exc: Exception | None = None
+        for attempt in range(_MAX_RETRIES):
+            try:
+                resp = requests.request(method, url, **kwargs)
+                resp.raise_for_status()
+                return resp
+            except _RETRYABLE as exc:
+                last_exc = exc
+                if attempt + 1 >= _MAX_RETRIES:
+                    break
+                wait = min(2**attempt, 30)
+                time.sleep(wait)
+        assert last_exc is not None
+        raise last_exc
 
     def _ensure_token(self) -> str:
-        if self._token and time.time() < self._token_expire_at - 60:
-            return self._token
+        now = time.time()
+        if FeishuClient._shared_token and now < FeishuClient._shared_token_expire_at - 60:
+            return FeishuClient._shared_token
 
-        resp = requests.post(
-            f"{self.base}/auth/v3/tenant_access_token/internal",
-            json={
-                "app_id": env("FEISHU_APP_ID"),
-                "app_secret": env("FEISHU_APP_SECRET"),
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
-        payload = resp.json()
-        if payload.get("code") != 0:
-            raise RuntimeError(f"Feishu auth failed: {payload}")
+        with FeishuClient._token_lock:
+            now = time.time()
+            if FeishuClient._shared_token and now < FeishuClient._shared_token_expire_at - 60:
+                return FeishuClient._shared_token
 
-        self._token = payload["tenant_access_token"]
-        self._token_expire_at = time.time() + int(payload.get("expire", 7200))
-        return self._token
+            resp = self._request(
+                "POST",
+                f"{self.base}/auth/v3/tenant_access_token/internal",
+                json={
+                    "app_id": env("FEISHU_APP_ID"),
+                    "app_secret": env("FEISHU_APP_SECRET"),
+                },
+                timeout=60,
+            )
+            payload = resp.json()
+            if payload.get("code") != 0:
+                raise RuntimeError(f"Feishu auth failed: {payload}")
+
+            FeishuClient._shared_token = payload["tenant_access_token"]
+            FeishuClient._shared_token_expire_at = time.time() + int(payload.get("expire", 7200))
+            return FeishuClient._shared_token
 
     @property
     def headers(self) -> dict[str, str]:
@@ -49,13 +81,13 @@ class FeishuClient:
             if page_token:
                 params["page_token"] = page_token
 
-            resp = requests.get(
+            resp = self._request(
+                "GET",
                 f"{self.base}/drive/v1/files",
                 headers=self.headers,
                 params=params,
-                timeout=60,
+                timeout=120,
             )
-            resp.raise_for_status()
             payload = resp.json()
             if payload.get("code") != 0:
                 raise RuntimeError(f"List files failed: {payload}")
@@ -77,13 +109,13 @@ class FeishuClient:
         If max_bytes is set and Content-Length exceeds it, skips download.
         If stream exceeds max_bytes, aborts and returns (None, partial_size).
         """
-        resp = requests.get(
+        resp = self._request(
+            "GET",
             f"{self.base}/drive/v1/files/{file_token}/download",
             headers=self.headers,
             timeout=600,
             stream=True,
         )
-        resp.raise_for_status()
 
         content_length = resp.headers.get("Content-Length")
         if max_bytes is not None and content_length:

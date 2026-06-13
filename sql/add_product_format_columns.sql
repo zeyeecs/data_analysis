@@ -1,0 +1,23 @@
+-- 商品字段格式化：F/R 增加 material、year；V 增加 year
+-- 参考飞书采购表（品牌/型号/成色判断/颜色/材质/年份/价格/图片），不含业务扩展列
+
+ALTER TABLE "F" ADD COLUMN IF NOT EXISTS material TEXT;
+ALTER TABLE "F" ADD COLUMN IF NOT EXISTS year TEXT;
+ALTER TABLE "F" ADD COLUMN IF NOT EXISTS other TEXT;
+
+ALTER TABLE "R" ADD COLUMN IF NOT EXISTS material TEXT;
+ALTER TABLE "R" ADD COLUMN IF NOT EXISTS year TEXT;
+ALTER TABLE "R" ADD COLUMN IF NOT EXISTS other TEXT;
+
+ALTER TABLE "V" ADD COLUMN IF NOT EXISTS year TEXT;
+ALTER TABLE "V" ADD COLUMN IF NOT EXISTS other TEXT;
+
+-- 飞书 xlsx 原始字段快照（导入时写入；LLM/规则引擎从 old_data.model 回填型号列）
+ALTER TABLE "F" ADD COLUMN IF NOT EXISTS old_data JSONB;
+ALTER TABLE "R" ADD COLUMN IF NOT EXISTS old_data JSONB;
+ALTER TABLE "V" ADD COLUMN IF NOT EXISTS old_data JSONB;
+
+-- 已废弃：型号与尺码合并为单列 model / product_name（对齐飞书「型号」）
+ALTER TABLE "F" DROP COLUMN IF EXISTS model_size;
+ALTER TABLE "R" DROP COLUMN IF EXISTS model_size;
+ALTER TABLE "V" DROP COLUMN IF EXISTS model_size;

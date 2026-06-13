@@ -15,8 +15,12 @@ CREATE TABLE "F" (
     condition       TEXT,
     price           NUMERIC,
     color           TEXT,
+    material        TEXT,
+    year            TEXT,
     image_path      TEXT,
     image_urls      TEXT,
+    other           TEXT,
+    old_data        JSONB,
     snapshot_date   DATE,
     imported_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -29,8 +33,12 @@ CREATE TABLE "R" (
     condition       TEXT,
     price           NUMERIC,
     color           TEXT,
+    material        TEXT,
+    year            TEXT,
     image_path      TEXT,
     image_urls      TEXT,
+    other           TEXT,
+    old_data        JSONB,
     snapshot_date   DATE,
     imported_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -52,6 +60,7 @@ CREATE TABLE "V" (
     product_name    TEXT,
     material        TEXT,
     color           TEXT,
+    year            TEXT,
     size            TEXT,
     price           NUMERIC,
     currency        TEXT,
@@ -62,6 +71,8 @@ CREATE TABLE "V" (
     sold_at         TIMESTAMPTZ,
     condition       TEXT,
     url             TEXT,
+    other           TEXT,
+    old_data        JSONB,
     snapshot_date   DATE,
     imported_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

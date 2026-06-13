@@ -6,6 +6,7 @@ WITH raw AS (
     FROM "F"
     WHERE snapshot_date BETWEEN %s::date AND %s::date
       AND model ILIKE %s
+      AND price IS NOT NULL AND price > 0
 
     UNION ALL
 
@@ -13,6 +14,7 @@ WITH raw AS (
     FROM "R"
     WHERE snapshot_date BETWEEN %s::date AND %s::date
       AND model ILIKE %s
+      AND price IS NOT NULL AND price > 0
 
     UNION ALL
 
@@ -20,6 +22,7 @@ WITH raw AS (
     FROM "V"
     WHERE snapshot_date BETWEEN %s::date AND %s::date
       AND product_name ILIKE %s
+      AND price IS NOT NULL AND price > 0
 )
 SELECT
     snapshot_date,

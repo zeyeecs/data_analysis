@@ -1,0 +1,25 @@
+# 一次性导入任务（由 sjkx-import.timer 每日触发）
+# 复制到 /etc/systemd/system/sjkx-import.service 后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sjkx-import.timer
+#
+# 修改 User、WorkingDirectory 为实际路径
+
+[Unit]
+Description=sjkx daily Feishu xlsx import (F/R/V incremental)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/sjkx
+Environment=PATH=/opt/sjkx/.venv/bin:/usr/bin:/bin
+ExecStart=/opt/sjkx/scripts/run_daily_import.sh
+
+# 避免 shell 里错误的 DATABASE_URL 覆盖 database.env
+UnsetEnvironment=DATABASE_URL
+
+[Install]
+WantedBy=multi-user.target

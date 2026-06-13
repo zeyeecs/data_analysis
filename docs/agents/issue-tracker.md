@@ -1,19 +1,26 @@
-# Issue 跟踪：本地 Markdown
+# Issue 跟踪：Linear MCP
 
-本仓库的任务与 PRD 以 Markdown 文件形式存放在 `.scratch/`。
+本仓库的任务、PRD 与实现工单以 **Linear MCP** 作为主 issue tracker。
 
-## 约定
+## 目标工作区
 
-- 每个功能一个目录：`.scratch/<功能-slug>/`
-- PRD 文件：`.scratch/<功能-slug>/PRD.md`
-- 实现任务：`.scratch/<功能-slug>/issues/<NN>-<slug>.md`，从 `01` 起编号
-- 分诊状态写在每个 issue 文件顶部的 `Status:` 行（标签字符串见 `triage-labels.md`）
-- 讨论记录追加在文件末尾的 `## 评论` 标题下
+- 组织名称：`cryogrid`
+- 项目名称：`二奢数据分析`
+
+工程类 skill 在创建、读取、分诊或拆分任务时，应默认面向上述 Linear 组织与项目执行。
+
+## 认证约定
+
+- API key 不写入仓库文档或源码文件
+- 运行 Linear 相关流程时，从环境变量 **`LINEAR_API_KEY`** 读取凭证
+- 当前仓库对应的 Linear 凭证应配置为你提供的那一枚 key；后续若轮换，只更新本地环境，不改本文档
 
 ## 当 skill 要求「发布到 issue 跟踪器」
 
-在 `.scratch/<功能-slug>/` 下创建新文件（目录不存在则先创建）。**正文使用简体中文**。
+优先在 Linear 的 `cryogrid / 二奢数据分析` 中创建 issue、PRD 对应任务或评论。**正文使用简体中文**，但标签、状态名、字段名保持系统原样。
+
+若需要保存较长的分析草稿、拆解笔记或临时材料，可继续放在 `.scratch/`，但 `.scratch/` 不再作为主 issue tracker。
 
 ## 当 skill 要求「获取相关工单」
 
-读取用户给出的路径或 issue 编号对应的文件。
+优先读取用户提供的 Linear issue 标识、标题或项目上下文；若用户同时给出本地 `.scratch/` 路径，则将其视为补充材料而非权威状态源。

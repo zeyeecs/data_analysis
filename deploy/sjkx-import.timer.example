@@ -1,0 +1,19 @@
+# 每日定时触发 sjkx-import.service
+# 复制到 /etc/systemd/system/sjkx-import.timer 后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sjkx-import.timer
+#
+# 立即试跑: sudo systemctl start sjkx-import.service
+# 查看日志: journalctl -u sjkx-import.service -n 100 --no-pager
+#            tail -f /opt/sjkx/logs/daily_import.log
+
+[Unit]
+Description=Run sjkx Feishu import daily
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
