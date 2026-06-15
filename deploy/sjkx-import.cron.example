@@ -1,7 +1,7 @@
-# 每日从飞书导入新快照（crontab -e）
-# 推荐统一走 scripts/run_daily_import.sh（自动激活 venv、写 logs/daily_import.log）
+# 每日从飞书导入 + 格式化（crontab -e）
+# 推荐统一走 scripts/run_server_pipeline.sh
 #
+# 0 3 * * * /opt/sjkx/scripts/run_server_pipeline.sh
+#
+# 仅导入（旧）：
 # 0 3 * * * /opt/sjkx/scripts/run_daily_import.sh
-#
-# 若不用包装脚本，也可直接：
-# 0 3 * * * cd /opt/sjkx && .venv/bin/python3 scripts/import_to_tables.py --category F --category R --category V >> logs/daily_import.log 2>&1

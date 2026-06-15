@@ -77,29 +77,40 @@ python3 scripts/backfill_images.py --mirror-images --all-rows --category F
 
 默认 **仅填空图片列**；`--mirror-images` 与 `import_to_tables` 行为一致（需 `.env` 中 `R2_*`）。
 
-## 每日自动导入
+## 每日自动导入与格式化（服务器）
 
-默认行为与手动执行相同：**仅导入库中尚无的 `snapshot_date`**（飞书目录里对应日期的 xlsx）。
+**导入、brand/model 格式化应在服务器或 GitHub Actions 上持续运行，不要在本地长跑。**
+
+默认行为：增量导入新 `snapshot_date` → 新快照 LLM/规则格式化 → reconcile 列表字面量 brand（如 `['Hermes']`）。
 
 ```bash
-# 手动试跑（日志追加到 logs/daily_import.log）
-./scripts/run_daily_import.sh
+# 服务器手动试跑（日志 logs/server_pipeline.log）
+./scripts/run_server_pipeline.sh
 ```
 
-**systemd timer（推荐，服务器）**：复制并修改路径后启用。
+**systemd timer（推荐）**：见 [`deploy/README.md`](deploy/README.md)。
 
 ```bash
-sudo cp deploy/sjkx-import.service.example /etc/systemd/system/sjkx-import.service
-sudo cp deploy/sjkx-import.timer.example /etc/systemd/system/sjkx-import.timer
-# 编辑 User、WorkingDirectory、ExecStart 中的 /opt/sjkx
+sudo cp deploy/sjkx-pipeline.service.example /etc/systemd/system/sjkx-pipeline.service
+sudo cp deploy/sjkx-pipeline.timer.example /etc/systemd/system/sjkx-pipeline.timer
+# 编辑 User、WorkingDirectory
 sudo systemctl daemon-reload
-sudo systemctl enable --now sjkx-import.timer
-sudo systemctl start sjkx-import.service   # 立即跑一次
+sudo systemctl enable --now sjkx-pipeline.timer
+sudo systemctl start sjkx-pipeline.service   # 立即跑一次
 ```
 
-**cron**：见 [`deploy/sjkx-import.cron.example`](deploy/sjkx-import.cron.example)（默认每天 03:00）。
+**首次部署**：在服务器执行一次全表格式化（修复 R 表历史 brand）：
 
-环境变量（可选）：`SJKX_LOG_DIR`、`SJKX_IMPORT_LOG` 覆盖日志目录与文件。
+```bash
+sudo cp deploy/sjkx-format-full.service.example /etc/systemd/system/sjkx-format-full.service
+sudo systemctl start sjkx-format-full.service
+```
+
+**GitHub Actions**：`import.yml`（每日流水线）、`format.yml`（手动全表回填）；需在 Secrets 中配置 `DATABASE_URL`、飞书与 LLM 密钥。
+
+旧版仅导入（无 reconcile）仍可用 `./scripts/run_daily_import.sh` 或 `sjkx-import.timer`，建议迁移到 `sjkx-pipeline`。
+
+环境变量（可选）：`SJKX_LOG_DIR`、`SJKX_PIPELINE_LOG` 覆盖日志路径；`SJKX_FORMAT_MODE=full|reconcile` 控制格式化范围。
 
 ## 数据表（三家竞品 · 均为已售）
 

@@ -1,4 +1,4 @@
-# 一次性导入任务（由 sjkx-import.timer 每日触发）
+# 一次性导入任务（旧：仅导入；推荐改用 sjkx-pipeline.service）
 # 复制到 /etc/systemd/system/sjkx-import.service 后：
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now sjkx-import.timer
@@ -6,7 +6,7 @@
 # 修改 User、WorkingDirectory 为实际路径
 
 [Unit]
-Description=sjkx daily Feishu xlsx import (F/R/V incremental)
+Description=sjkx daily Feishu xlsx import (F/R/V incremental) — legacy, use sjkx-pipeline
 After=network-online.target
 Wants=network-online.target
 

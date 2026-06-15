@@ -1,0 +1,14 @@
+# 每日触发 sjkx-pipeline.service（导入 + 格式化）
+# 复制到 /etc/systemd/system/sjkx-pipeline.timer 后 enable。
+# 若仍使用旧 sjkx-import.timer，请 disable 避免重复导入。
+
+[Unit]
+Description=Run sjkx import + format pipeline daily
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

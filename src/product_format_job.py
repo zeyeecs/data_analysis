@@ -103,6 +103,13 @@ def _is_transient_db_error(exc: BaseException) -> bool:
     )
 
 
+def _list_brand_filter_clause(only_list_brand: bool) -> str:
+    """竞品 R 等表 brand 常为 Python 列表字面量 ['Hermes']，需归一化。"""
+    if not only_list_brand:
+        return ""
+    return " AND brand LIKE '[%'"
+
+
 def _snapshot_filter_clause(
     snapshot_dates: Iterable[date | None] | None,
 ) -> tuple[str, list[date | None]]:
@@ -133,14 +140,16 @@ def _process_batch(
     last_id: int,
     dry_run: bool,
     snapshot_dates: Iterable[date | None] | None = None,
+    only_list_brand: bool = False,
 ) -> tuple[list, int, list[tuple], int]:
     """读一批、格式化；返回 (rows, new_last_id, updates, changed_in_batch)。"""
     snap_clause, snap_params = _snapshot_filter_clause(snapshot_dates)
+    list_brand_clause = _list_brand_filter_clause(only_list_brand)
     if table in {"F", "R"}:
         select_sql = f"""
             SELECT id, brand, model, condition, color, material, year, other, old_data
             FROM "{table}"
-            WHERE id > %s{snap_clause}
+            WHERE id > %s{snap_clause}{list_brand_clause}
             ORDER BY id
             LIMIT %s
         """
@@ -148,7 +157,7 @@ def _process_batch(
         select_sql = f"""
             SELECT id, brand, product_name, material, condition, color, year, other, old_data
             FROM "V"
-            WHERE id > %s{snap_clause}
+            WHERE id > %s{snap_clause}{list_brand_clause}
             ORDER BY id
             LIMIT %s
         """
@@ -247,6 +256,7 @@ def format_table(
     dry_run: bool,
     start_id: int = 0,
     snapshot_dates: Iterable[date | None] | None = None,
+    only_list_brand: bool = False,
     log: bool = True,
 ) -> tuple[int, int]:
     scanned = 0
@@ -261,6 +271,7 @@ def format_table(
                     last_id=last_id,
                     dry_run=dry_run,
                     snapshot_dates=snapshot_dates,
+                    only_list_brand=only_list_brand,
                 )
                 break
             except psycopg2.Error as exc:

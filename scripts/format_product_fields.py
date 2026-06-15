@@ -52,6 +52,11 @@ def main() -> int:
         metavar="DATE",
         help="只处理指定 snapshot_date（可重复；用 null 表示 snapshot_date IS NULL）",
     )
+    parser.add_argument(
+        "--only-list-brand",
+        action="store_true",
+        help="仅处理 brand 为列表字面量（如 ['Hermes']）的行，用于每日增量归一化",
+    )
     args = parser.parse_args()
 
     if not args.dry_run and not args.write_db:
@@ -92,6 +97,8 @@ def main() -> int:
                 )
             )
             print(f"formatting {table} (snapshot_date: {dates_label})...", flush=True)
+        elif args.only_list_brand:
+            print(f"formatting {table} (only list-brand rows)...", flush=True)
         else:
             print(f"formatting {table}...", flush=True)
         scanned, changed = format_table(
@@ -99,6 +106,7 @@ def main() -> int:
             dry_run=args.dry_run,
             start_id=start_id,
             snapshot_dates=snapshot_dates,
+            only_list_brand=args.only_list_brand,
         )
         total_scanned += scanned
         total_changed += changed

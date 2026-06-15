@@ -1,0 +1,27 @@
+# 每日流水线：飞书导入 + 商品字段格式化（推荐替代仅 import 的 service）
+# 复制到 /etc/systemd/system/sjkx-pipeline.service 后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sjkx-pipeline.timer
+#
+# 立即试跑: sudo systemctl start sjkx-pipeline.service
+# 查看日志: journalctl -u sjkx-pipeline.service -n 100 --no-pager
+#            tail -f /opt/sjkx/logs/server_pipeline.log
+
+[Unit]
+Description=sjkx daily import + product field format (F/R/V)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/sjkx
+Environment=PATH=/opt/sjkx/.venv/bin:/usr/bin:/bin
+EnvironmentFile=-/opt/sjkx/.env
+ExecStart=/opt/sjkx/scripts/run_server_pipeline.sh
+
+UnsetEnvironment=DATABASE_URL
+
+[Install]
+WantedBy=multi-user.target
