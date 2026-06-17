@@ -6,6 +6,7 @@ export const siteConfig = {
     home: "/",
     overview: "/overview",
     details: "/details",
+    aiTasks: "/ai-tasks",
     settings: "/settings",
   },
 };

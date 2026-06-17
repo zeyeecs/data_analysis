@@ -1,0 +1,28 @@
+# 复制到 /etc/systemd/system/sjkx-task-agent.service 后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sjkx-task-agent
+#
+# 在 .env 中设置 SJKX_TASK_AGENT_SECRET（与 Vercel 环境变量一致）。
+# 默认只监听 127.0.0.1:8765，需配合 nginx 反代并限制访问。
+
+[Unit]
+Description=sjkx AI task HTTP agent (remote trigger from Vercel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/sjkx
+Environment=PATH=/home/ubuntu/sjkx/.venv/bin:/usr/bin:/bin
+Environment=SJKX_TASK_AGENT_HOST=127.0.0.1
+Environment=SJKX_TASK_AGENT_PORT=8765
+EnvironmentFile=-/home/ubuntu/sjkx/.env
+ExecStart=/home/ubuntu/sjkx/scripts/run_task_agent.sh
+Restart=on-failure
+RestartSec=5
+UnsetEnvironment=DATABASE_URL
+
+[Install]
+WantedBy=multi-user.target

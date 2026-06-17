@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.product_format_job import _snapshot_filter_clause
+from src.product_format_job import _list_brand_filter_clause, _snapshot_filter_clause
+
+
+def test_list_brand_filter_escapes_like_wildcard_for_psycopg2() -> None:
+    assert _list_brand_filter_clause(False) == ""
+    assert _list_brand_filter_clause(True) == " AND brand LIKE '[%%'"
 
 
 def test_snapshot_filter_none_means_all_rows() -> None:

@@ -44,7 +44,7 @@ fi
 .venv/bin/pip install -q -r requirements.txt
 mkdir -p logs
 
-for f in scripts/run_format_job.sh scripts/run_server_pipeline.sh; do
+for f in scripts/run_format_job.sh scripts/run_server_pipeline.sh scripts/run_task_agent.sh; do
   chmod +x "$f"
 done
 
@@ -106,6 +106,15 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable sjkx-pipeline.timer
 sudo systemctl start sjkx-pipeline.timer
+
+if [[ -f deploy/sjkx-task-agent.service.example ]]; then
+  sudo cp deploy/sjkx-task-agent.service.example /etc/systemd/system/sjkx-task-agent.service
+  sudo sed -i "s|/home/ubuntu/sjkx|${REMOTE_DIR}|g" /etc/systemd/system/sjkx-task-agent.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable sjkx-task-agent.service
+  sudo systemctl restart sjkx-task-agent.service || true
+fi
+
 echo "timer enabled; status:"
 sudo systemctl status sjkx-pipeline.timer --no-pager || true
 REMOTE

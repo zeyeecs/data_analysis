@@ -158,6 +158,10 @@ cd web && npm install && npm run deploy
 
 1. 在 Vercel 项目 **sjkx-analysis-web** 的环境变量中配置 `DATABASE_URL`（须为 Neon **pooler** 连接串，与 `database.env` 一致）。
 2. 若从 Git 自动部署：项目 **Root Directory** 设为 `web`。
+3. **AI 任务远程执行（可选）**：Vercel 无法本地跑 Python，可在 VPS 启动任务代理后配置：
+   - VPS：`.env` 中 `SJKX_TASK_AGENT_SECRET=<随机长字符串>`，并 `sudo systemctl enable --now sjkx-task-agent`（见 [`deploy/README.md`](deploy/README.md)）
+   - Vercel：`SJKX_TASK_AGENT_URL=https://<你的 VPS 域名>`，`SJKX_TASK_AGENT_SECRET` 与 VPS 相同
+   - 配置后，https://analysis.sweetvintage.net/ai-tasks 上的「加入队列」会通过 HTTPS 转发到 VPS 执行
 
 若 `npx vercel` 报 `EACCES`（`~/.npm` 含 root 文件）：在 `web/` 下已配置 `.npmrc` 使用本地缓存 `.npm-cache`，执行 `npm install` 后再 `npm run deploy` 即可。若要一劳永逸修复全局缓存：`sudo chown -R "$(whoami)" ~/.npm`
 

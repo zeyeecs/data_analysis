@@ -1,0 +1,24 @@
+# 可选：将 VPS 任务代理暴露给 Vercel（替换 server_name 与路径）
+# 复制片段到 nginx sites-available，并配置 TLS。
+#
+# Vercel 环境变量：
+#   SJKX_TASK_AGENT_URL=https://tasks.example.com
+#   SJKX_TASK_AGENT_SECRET=<与 VPS .env 相同>
+#
+# VPS .env：
+#   SJKX_TASK_AGENT_SECRET=<随机长字符串>
+
+server {
+    listen 443 ssl;
+    server_name tasks.example.com;
+
+    location /api/ai-tasks {
+        proxy_pass http://127.0.0.1:8765/api/ai-tasks;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300;
+    }
+}

@@ -107,7 +107,7 @@ def _list_brand_filter_clause(only_list_brand: bool) -> str:
     """竞品 R 等表 brand 常为 Python 列表字面量 ['Hermes']，需归一化。"""
     if not only_list_brand:
         return ""
-    return " AND brand LIKE '[%'"
+    return " AND brand LIKE '[%%'"
 
 
 def _snapshot_filter_clause(

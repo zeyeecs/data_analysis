@@ -1,7 +1,6 @@
 "use client"
-import { siteConfig } from "@/app/siteConfig"
 import { cx, focusRing } from "@/lib/utils"
-import { RiHome2Line, RiListCheck, RiSettings5Line } from "@remixicon/react"
+import { coreNavigation, isNavigationActive } from "@/lib/navigation"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import MobileSidebar from "./MobileSidebar"
@@ -11,24 +10,8 @@ import {
 } from "./SidebarWorkspacesDropdown"
 import { UserProfileDesktop, UserProfileMobile } from "./UserProfile"
 
-const navigation = [
-  { name: "概览", href: siteConfig.baseLinks.overview, icon: RiHome2Line },
-  { name: "详情", href: siteConfig.baseLinks.details, icon: RiListCheck },
-  {
-    name: "设置",
-    href: siteConfig.baseLinks.settings,
-    icon: RiSettings5Line,
-  },
-] as const
-
 export function Sidebar() {
   const pathname = usePathname()
-  const isActive = (itemHref: string) => {
-    if (itemHref === siteConfig.baseLinks.settings) {
-      return pathname.startsWith("/settings")
-    }
-    return pathname === itemHref || pathname.startsWith(itemHref)
-  }
   return (
     <>
       {/* sidebar (lg+) */}
@@ -40,12 +23,12 @@ export function Sidebar() {
             className="flex flex-1 flex-col space-y-10"
           >
             <ul role="list" className="space-y-0.5">
-              {navigation.map((item) => (
+              {coreNavigation.map((item) => (
                 <li key={item.name}>
                   <Link
                     href={item.href}
                     className={cx(
-                      isActive(item.href)
+                      isNavigationActive(pathname, item)
                         ? "text-indigo-600 dark:text-indigo-400"
                         : "text-gray-700 hover:text-gray-900 dark:text-gray-400 hover:dark:text-gray-50",
                       "flex items-center gap-x-2.5 rounded-md px-2 py-1.5 text-sm font-medium transition hover:bg-gray-100 hover:dark:bg-gray-900",
