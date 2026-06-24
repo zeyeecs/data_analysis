@@ -165,7 +165,15 @@ export function ProductSearchBar(props: ProductSearchBarProps) {
         </Field>
         <Button
           variant="primary"
-          className="h-9 w-full shrink-0 sm:w-auto sm:min-w-[6.5rem]"
+          className={cx(
+            "h-10 w-full shrink-0 border-transparent px-5 text-base font-semibold shadow-md",
+            "bg-indigo-600 text-white hover:bg-indigo-500",
+            "dark:bg-indigo-500 dark:text-white dark:hover:bg-indigo-400",
+            "disabled:bg-indigo-200 disabled:text-indigo-50",
+            "disabled:dark:bg-indigo-950 disabled:dark:text-indigo-400",
+            "ring-2 ring-indigo-500/25 dark:ring-indigo-400/30",
+            "sm:w-auto sm:min-w-[7.5rem]",
+          )}
           isLoading={analyzing}
           loadingText="分析中…"
           onClick={onAnalyze}

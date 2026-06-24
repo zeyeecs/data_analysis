@@ -105,12 +105,14 @@ export function MultiSelectDropdown({
         <button
           type="button"
           className={cx(
-            "group/trigger flex h-9 w-full select-none items-center justify-between gap-2 truncate rounded-md border px-2.5 py-1.5 shadow-sm outline-none transition sm:text-sm",
-            "border-gray-300 dark:border-gray-800",
+            "group/trigger flex h-9 w-full select-none items-center justify-between gap-2 truncate rounded-md border px-2.5 py-1.5 shadow outline-none transition sm:text-sm",
+            "border-gray-400 dark:border-gray-600",
             "text-gray-900 dark:text-gray-50",
-            "bg-white dark:bg-gray-950",
-            "hover:bg-gray-50 hover:dark:bg-gray-950/50",
-            "focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:dark:ring-indigo-700/30",
+            "bg-white dark:bg-gray-800",
+            "hover:bg-gray-50 hover:dark:bg-gray-700",
+            "focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:dark:ring-indigo-600/50",
+            hasSelection &&
+              "border-indigo-300 bg-indigo-50/80 dark:border-indigo-700 dark:bg-indigo-950/40",
             className,
           )}
         >
